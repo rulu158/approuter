@@ -9,6 +9,7 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -23,7 +24,7 @@ public class AppService {
 		return bindings.get(path);
 	}
 
-	public String GET(String urlToRead) throws MalformedURLException {
+	public ResponseEntity<String> GET(String urlToRead) throws MalformedURLException {
 		StringBuilder response = new StringBuilder();
 		
 		URL url = new URL(urlToRead);
@@ -40,17 +41,20 @@ public class AppService {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			return null;
+			return ResponseEntity.internalServerError().body("");
 		} finally {
 			if (conn != null) {
 				conn.disconnect();
 			}
 		}
 		
-		return response.toString();
+		return ResponseEntity.ok().body(response.toString());
 	}
 
-	public String POST(String urlToRead, String jsonRequest) throws MalformedURLException {
+	public ResponseEntity<String> POST(String urlToRead, String request, String contentType) throws MalformedURLException {
+		System.out.println("REQUEST: " + request);
+		
+		int responseStatus;
 		StringBuilder response = new StringBuilder();
 		
 		URL url = new URL(urlToRead);
@@ -60,16 +64,16 @@ public class AppService {
 			conn = (HttpURLConnection) url.openConnection();
 			
 			conn.setRequestMethod("POST");
-			conn.setRequestProperty("Content-Type", "application/json");
+			conn.setRequestProperty("Content-Type", contentType);
 			
 			conn.setRequestProperty("Content-Length",
-					Integer.toString(jsonRequest.getBytes().length));
+					Integer.toString(request.getBytes().length));
 			
 			conn.setUseCaches(false);
 			conn.setDoOutput(true);
 			
 			DataOutputStream wr = new DataOutputStream(conn.getOutputStream());
-			wr.writeBytes(jsonRequest);
+			wr.writeBytes(request);
 			wr.close();
 			
 			try (BufferedReader reader = new BufferedReader(
@@ -78,15 +82,17 @@ public class AppService {
 					response.append(line);
 				}
 			}
+			
+			responseStatus = conn.getResponseCode();
 		} catch (Exception e) {
 			e.printStackTrace();
-			return null;
+			return ResponseEntity.internalServerError().body("");
 		} finally {
 			if (conn != null) {
 				conn.disconnect();
 			}
 		}
 		
-		return response.toString();
+		return ResponseEntity.status(responseStatus).body(response.toString());
 	}
 }
